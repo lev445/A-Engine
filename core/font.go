@@ -49,6 +49,9 @@ func LoadFont(path string, fontSize float32) (*Font, error) {
 	fc.SetFontSize(float64(fontSize))
 	fc.SetSrc(image.White)
 	fc.SetDst(f.atlas)
+	// ВАЖНО: без SetClip контекст имеет пустой clip-rectangle (Rect(0,0,0,0)),
+	// и DrawString не нарисует НИ ОДНОГО глифа (атлас останется пустым).
+	fc.SetClip(f.atlas.Bounds())
 	var x, y float32 = 0, 0
 	var maxRowHeight float32 = 0.0
 
@@ -61,16 +64,13 @@ func LoadFont(path string, fontSize float32) (*Font, error) {
 		_, err := fc.DrawString(string(ch), pt)
 		if err != nil {
 			continue
-			return nil, fmt.Errorf("\033[41mWRN\033[0m :: app:DrawString: Perhaps some symbol could not be drawn properly. This is not a error, but this event is catched: %v", err)
 		}
+		// HMetric и Bounds возвращают числа в 26.6 fixed-point:
+		// чтобы получить пиксели, нужно делить на 64, а НЕ на 1<<16.
 		advance := ttfFont.HMetric(fixed.I(int(fontSize)), glyphIndex).AdvanceWidth
-		glyphWidth := float32(advance) / 64.0
 		bounds := ttfFont.Bounds(fixed.I(int(fontSize)))
+		glyphWidth := float32(advance) / 64.0
 		glyphHeight := float32(bounds.Max.Y-bounds.Min.Y) / 64.0
-		//advance := ttfFont.HMetric(fixed.I(int(fontSize)), glyphIndex).AdvanceWidth
-		//bounds := ttfFont.Bounds(fixed.I(int(fontSize)))
-		glyphWidth = float32(advance) / float32(1<<16)
-		glyphHeight = float32(bounds.Max.Y-bounds.Min.Y) / float32(1<<16)
 		f.glyphs[ch] = &Glyph{
 			Width:  glyphWidth,
 			Height: glyphHeight,

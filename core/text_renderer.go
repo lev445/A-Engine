@@ -69,6 +69,9 @@ func (tr *TextRenderer) RenderText(font *Font, text string, x, y, scale float32,
 		gl.BindBuffer(gl.ARRAY_BUFFER, tr.vbo)
 		gl.BufferSubData(gl.ARRAY_BUFFER,0,len(vertices)*4, gl.Ptr(vertices))
 		gl.DrawArrays(gl.TRIANGLES,0,6)
+		// двигаем перо вправо на ширину символа (advance), иначе все
+		// глифы рисуются поверх друг друга в одной точке
+		currentX += glyph.Advance * scale
 	}
 	gl.BindVertexArray(0)
 }
