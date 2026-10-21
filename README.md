@@ -1,5 +1,5 @@
 Welcome to A+ Engine official repository. 
-> **A+ Engine** is a game engine, you can use it for both game development and graphical applications.**
+> **A+ Engine** is a game engine, you can use it for both game development and graphical applications.
 
 <div align="center">
   <img src="https://img.shields.io/badge/Language-Go-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Language">
@@ -34,4 +34,4 @@ MIT
 <p align="center">
 Made with ❤️
 </p>
-Thank you for checking out this **repository**!
+Thank you for checking out this repository!
