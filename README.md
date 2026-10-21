@@ -13,9 +13,9 @@ This engine has a simple script **interpreter** and has **SDK**.
 Here is the technical specification
 | Component | Tech | Version |
 | :--- | :--- | :--- |
-| **Language** | Go | 1.27.1 |
-| **Graphic API** | OpenGL | `4.1` |
-| **Build system** | Go Modules | - |
+| **Language** | `Go` | `1.27.1` |
+| **Graphic API** | `OpenGL` | `4.1` |
+| **Build system** | `Go Modules` | `-` |
 ## How to start
 a. clone repository: 
 ```bash
