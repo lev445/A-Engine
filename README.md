@@ -37,6 +37,8 @@ or
 ```bash
 go run .
 ```
+# Documentation
+The documentation current is not created... by the way, you can wait!
 # License
 MIT
 <p align="center">
