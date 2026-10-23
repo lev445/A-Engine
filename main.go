@@ -5,7 +5,7 @@ import (
 	"strings"
 	"fmt"
 	"github.com/go-gl/gl/v4.1-core/gl"
-	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/go-gl/glfw/v3.4/glfw"
 	mgl32 "github.com/go-gl/mathgl/mgl32"
 	"a-engine/core" 
 	_ "embed"
@@ -100,9 +100,23 @@ func main() {
 	 if err := gl.Init(); err != nil {
 	 	log.Fatalf("\033[41mERR\033[0m :: app:main.go: Failed to initialize OpenGL: %v\n", err)
 	 }
-	 window.SetFramebufferSizeCallback(func(w *glfw.Window, width, height int) {
+	 lastFbW, lastFbH := 0, 0
+	 applyFramebufferSize := func(width, height int) {
+	 	// Под Wayland окно на старте может иметь framebuffer 0x0:
+	 	// не строим вырожденные матрицы из нулей.
+	 	if width <= 0 || height <= 0 {
+	 		return
+	 	}
+	 	lastFbW, lastFbH = width, height
 	 	gl.Viewport(0, 0, int32(width), int32(height))
 	 	projection = mgl32.Perspective(mgl32.DegToRad(45.0), float32(width)/float32(height), 0.1, 100.0)
+	 	orthoProjection = mgl32.Ortho2D(0, float32(width), float32(height), 0)
+	 	if textRenderer != nil {
+	 		textRenderer.SetProjection(orthoProjection)
+	 	}
+	 }
+	 window.SetFramebufferSizeCallback(func(w *glfw.Window, width, height int) {
+	 	applyFramebufferSize(width, height)
 	 })
 	 log.Println("\033[32mOK\033[0m :: app:main.go: OpenGL version:", gl.GoStr(gl.GetString(gl.VERSION)))
 	 log.Println("\033[32mBUSY\033[0m :: app:main.go: Preparing to compiling shader...")
@@ -135,9 +149,7 @@ func main() {
 	 gl.EnableVertexAttribArray(0)
 	 // initializing time 
 	 lastFrame := 0.0 // FPS
-	 width, height := window.GetFramebufferSize()
-	 projection = mgl32.Perspective(mgl32.DegToRad(45.0), float32(width)/float32(height), 0.1, 100.0)
-	 orthoProjection = mgl32.Ortho2D(0, float32(width), float32(height), 0)
+	 applyFramebufferSize(window.GetFramebufferSize())
 	 textRenderer = core.NewTextRenderer(orthoProjection)
 	 textVert, err := compileShader(textVertexShaderSource, gl.VERTEX_SHADER)
 	 if err != nil {
@@ -153,7 +165,7 @@ func main() {
 	 gl.LinkProgram(textProgram)
 	 textRenderer.SetProgram(textProgram)
 	 textRenderer.SetupVAO()
-	 font, err = core.LoadFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 32.0)
+	 font, err = core.LoadFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 48.0)
 	 if err != nil {
 	     log.Fatalf("\033[41mERR\033[0m :: Failed to load font: %v\n", err)
 	 }
@@ -166,6 +178,16 @@ func main() {
 	 	currentFrame := glfw.GetTime()
 	 	deltaTime := float32(currentFrame - lastFrame)
 	 	lastFrame = currentFrame
+		// под Wayland размер может приехать после первых кадров:
+		// проверяем каждый кадр и не рисуем ничего до получения размера
+		if fw, fh := window.GetFramebufferSize(); fw != lastFbW || fh != lastFbH {
+			applyFramebufferSize(fw, fh)
+		}
+		if lastFbW == 0 {
+			window.SwapBuffers()
+			glfw.PollEvents()
+			continue
+		}
 	 	// intializing actions (w/a/s/d)
 	 	if window.GetKey(glfw.KeyW) == glfw.Press {
 	 		camera.ProcessKeyboard("FORWARD", deltaTime)
@@ -193,7 +215,7 @@ func main() {
 	 	gl.Enable(gl.BLEND)
 	 	// render text (simple-UI)
 	 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	 	textRenderer.RenderText(font, "Hello, world!", 50.0, 50.0, 1.5, 1.0, 1.0, 1.0)
+	 	textRenderer.RenderText(font, "Hello, world!", 50.0, 50.0, 1.0, 1.0, 1.0, 1.0)
 	 	gl.Enable(gl.DEPTH_TEST)
 	 	window.SwapBuffers()
 	 	glfw.PollEvents()

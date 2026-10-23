@@ -1,5 +1,7 @@
 package core
 import (
+	"math"
+
 	"github.com/go-gl/gl/v4.1-core/gl"
 	mgl32 "github.com/go-gl/mathgl/mgl32"
 )
@@ -24,6 +26,11 @@ func (tr *TextRenderer) SetProgram(program uint32) {
 	tr.projLoc = gl.GetUniformLocation(program, gl.Str("uProjection\x00"))
 	tr.colorLoc = gl.GetUniformLocation(program, gl.Str("uTextColor\x00"))
 	tr.texLoc = gl.GetUniformLocation(program, gl.Str("uFontTexture\x00"))
+}
+
+// SetProjection is update ortho-projection UI (resize window, for example.).
+func (tr *TextRenderer) SetProjection(proj mgl32.Mat4) {
+	tr.orthoProjection = proj
 }
 
 func (tr *TextRenderer) SetupVAO() {
@@ -53,10 +60,10 @@ func (tr *TextRenderer) RenderText(font *Font, text string, x, y, scale float32,
 	currentX := x
 	for _, ch := range text {
 		glyph := font.GetGlyph(ch)
-		charX := currentX + glyph.BearingX*scale
-		charY := y - glyph.BearingY*scale
-		charW := glyph.Width * scale
-		charH := glyph.Height * scale
+		charX := float32(math.Round(float64(currentX + glyph.BearingX*scale)))
+		charY := float32(math.Round(float64(y - glyph.BearingY*scale)))
+		charW := float32(math.Round(float64(glyph.Width * scale)))
+		charH := float32(math.Round(float64(glyph.Height * scale)))
 		vertices := []float32 {
 			// POSITION            UV
 			charX, charY, glyph.U, glyph.V,
@@ -69,8 +76,6 @@ func (tr *TextRenderer) RenderText(font *Font, text string, x, y, scale float32,
 		gl.BindBuffer(gl.ARRAY_BUFFER, tr.vbo)
 		gl.BufferSubData(gl.ARRAY_BUFFER,0,len(vertices)*4, gl.Ptr(vertices))
 		gl.DrawArrays(gl.TRIANGLES,0,6)
-		// двигаем перо вправо на ширину символа (advance), иначе все
-		// глифы рисуются поверх друг друга в одной точке
 		currentX += glyph.Advance * scale
 	}
 	gl.BindVertexArray(0)

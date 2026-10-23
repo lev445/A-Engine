@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/draw"
+	"math"
 	"os"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
@@ -52,45 +53,43 @@ func LoadFont(path string, fontSize float32) (*Font, error) {
 	// ВАЖНО: без SetClip контекст имеет пустой clip-rectangle (Rect(0,0,0,0)),
 	// и DrawString не нарисует НИ ОДНОГО глифа (атлас останется пустым).
 	fc.SetClip(f.atlas.Bounds())
-	var x, y float32 = 0, 0
-	var maxRowHeight float32 = 0.0
+	// Пакуем атлас строго по целочисленной сетке: глиф растеризуется ровно
+	// в тех координатах, из которых потом берётся UV-окно. Иначе глиф
+	// смещён относительно своего UV-окна на долю текселя и биллинейный
+	// фильтр размывает каждый символ.
+	bounds := ttfFont.Bounds(fixed.I(int(fontSize)))
+	cellH := int(math.Ceil(float64(bounds.Max.Y-bounds.Min.Y) / 64.0))
+	x, y := 0, 0
 
 	for ch := rune(32); ch <= 126; ch++ {
 		glyphIndex := ttfFont.Index(ch)
 		if glyphIndex == 0 {
 			continue
 		}
-		pt := freetype.Pt(int(x), int(y)+int(fontSize))
+		pt := freetype.Pt(x, y+int(fontSize))
 		_, err := fc.DrawString(string(ch), pt)
 		if err != nil {
 			continue
 		}
-		// HMetric и Bounds возвращают числа в 26.6 fixed-point:
-		// чтобы получить пиксели, нужно делить на 64, а НЕ на 1<<16.
+		// HMetric возвращает 26.6 fixed-point: делим на 64 и округляем
+		// вверх до целого числа текселей.
 		advance := ttfFont.HMetric(fixed.I(int(fontSize)), glyphIndex).AdvanceWidth
-		bounds := ttfFont.Bounds(fixed.I(int(fontSize)))
-		glyphWidth := float32(advance) / 64.0
-		glyphHeight := float32(bounds.Max.Y-bounds.Min.Y) / 64.0
+		advPx := int(math.Ceil(float64(advance) / 64.0))
 		f.glyphs[ch] = &Glyph{
-			Width:  glyphWidth,
-			Height: glyphHeight,
+			Width:    float32(advPx),
+			Height:   float32(cellH),
 			BearingX: 0,
 			BearingY: 0,
-			Advance: glyphWidth,
-			U:  x / float32(atlasSize),
-			V:  y / float32(atlasSize),
-			U2: (x + glyphWidth) / float32(atlasSize),
-			V2: (y + glyphHeight) / float32(atlasSize),
+			Advance:  float32(advPx),
+			U:        float32(x) / float32(atlasSize),
+			V:        float32(y) / float32(atlasSize),
+			U2:       float32(x+advPx) / float32(atlasSize),
+			V2:       float32(y+cellH) / float32(atlasSize),
 		}
-		x += glyphWidth + 2
-		if x+glyphWidth > float32(atlasSize) {
+		x += advPx + 2
+		if x+advPx > atlasSize {
 			x = 0
-			y += float32(maxRowHeight) + 2
-			maxRowHeight = 0
-		}
-
-		if glyphHeight > maxRowHeight {
-			maxRowHeight = glyphHeight
+			y += cellH + 2
 		}
 	}
 	gl.GenTextures(1, &f.texture)
