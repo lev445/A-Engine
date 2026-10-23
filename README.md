@@ -29,6 +29,14 @@ c. install dependencies
 ```bash
 go mod tidy
 ```
+d. build or run engine
+```bash
+go build .
+```
+or
+```bash
+go run .
+```
 # License
 MIT
 <p align="center">
